@@ -1,45 +1,40 @@
-# download youtube video from playlist
-import yt_dlp
+############################################################################################
+## File name   : yt_kbs_worldreport_download.py
+## Description : "특파원보고 세계는 지금" 최신 회차 다운로드
+## Information :
+##==========================================================================================
+##  version   date             author      reason
+##------------------------------------------------------------------------------------------
+##  1.0       2023-06-04       kukubabo    First Revision.
+############################################################################################
+#import sys
 import subprocess
 import re
+import yt_dlp
 
-# define playlist url
-playlist_url = 'https://www.youtube.com/watch?v=9jeaIELBlP0&list=PLlHdT83qa_1zKzg0so3sU7FtO-rxao_2H'
-
-# get video url from playlist
-def get_video_url(playlist_url, index):
+# 재생목록에서 n번째 영상 url 가져오기
+def get_video_url(playlist_url, n):
     ydl_opts = {
         'extract_flat': 'in_playlist',
         'skip_download': True,
-        'playlistend': index,
+        'playlist_items': str(n),
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info_dict = ydl.extract_info(playlist_url, download=False)
-        return info_dict['entries'][index-1]['url']
+        entries = info_dict.get('entries', [])
+        if entries:
+            nth_video_url = entries[0]['url']
+            return nth_video_url
+        else:
+            return None
 
-# get video title from url
-def get_video_title(url):
+# url에서 타이틀 가져오기
+def get_youtube_title(url):
     command = ['yt-dlp', '--get-title', url]
     output = subprocess.check_output(command).decode().strip()
     return output
 
-# get available format id from url
-def get_available_format_id(url):
-    ydl_opts = {
-        'listformats': True,
-    }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info_dict = ydl.extract_info(url, download=False)
-        formats = info_dict.get('formats', [])
-        # get ID, EXT list
-        format_ids = [(format['format_id'], format['ext']) for format in formats]
-        # exclude formats that have non-numeric values in format_id
-        format_ids = [format_id[0] for format_id in format_ids if format_id[0].isnumeric()]
-        # sort format_ids in descending order
-        format_ids.sort(reverse=True)
-        return format_ids[0] if format_ids else 'Unknown'
-
-# get max resolution from url
+# url에서 최대 해상도 가져오기
 def get_max_resolution(url):
     ydl_opts = {
         'format': 'best[ext=mp4]',
@@ -47,16 +42,15 @@ def get_max_resolution(url):
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info_dict = ydl.extract_info(url, download=False)
         formats = info_dict.get('formats', [])
-        # get resolutions in width, height format
+        # 해상도 목록에서 width, height 형태의 것들만 가져오기
         resolutions = [(format['width'], format['height']) for format in formats if 'width' in format and 'height' in format]
-        # exclude resolutions that have non-numeric values in width or height
+        # width, height 값에 숫자가 아닌 것이 있을 경우 제외한 뒤 height 값(resolution[1])만 가져오기
         resolutions = [resolution[1] for resolution in resolutions if all(resolution)]
-        # sort resolutions in descending order
+        # height 목록을 내림차순으로 정렬
         resolutions.sort(reverse=True)
         max_resolution = resolutions[0] if resolutions else 'Unknown'
         return max_resolution
 
-# extract filename from title
 def extract_filename_from_title(title):
     pattern = r"\(KBS_(.*?)회_(\d{4})\.(\d{2})\.(\d{2})\.[^)]+\)"
     match = re.search(pattern, title)
@@ -70,16 +64,33 @@ def extract_filename_from_title(title):
     else:
         return f"특파원 보고 세계는 지금.{resolution}p-YT"
 
-# download youtube video
-# Got error: HTTP Error 403: Forbidden. Retrying fragment 1 (attempt 1 of 10)...
-def download_youtube_video(url, format_id, output_path):
-    command = ['yt-dlp', '-f', f'{format_id}', '-o', output_path, url]
+def download_youtube_video(url, output_path):
+    command = ['yt-dlp', '-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4', '--merge-output-format', 'mp4', '-o', output_path, url]
     subprocess.call(command)
 
-# download latest video from playlist
-url = get_video_url(playlist_url, 1)
-format_id=get_available_format_id(url)
-title = get_video_title(url)
-filename = extract_filename_from_title(title)
+# 파라미터 체크해서 URL 정보가 없으면 URL 입력하라고 알려주기
+# - 최신 버전으로 다운받는 방식으로 바꿔서 일단 주석 처리(추후에 필요하면 풀어서 다시 사용)
+#if len(sys.argv) < 2:
+#    print("URL을 입력해주세요.")
+#    sys.exit(1)
+# 첫 번째 파라미터에서 다운로드 대상 URL을 받아옴
+#url = sys.argv[1]
+
+# 특파원 보고 세계는 지금 본방송 재생목록
+playlist_url = 'https://www.youtube.com/watch?v=9jeaIELBlP0&list=PLlHdT83qa_1zKzg0so3sU7FtO-rxao_2H'
+# n번째 영상 url 가져오기(최근방송 받으려면 default 1 사용)
+url = get_video_url(playlist_url, 2)
+# url을 가지고 YouTube 동영상의 제목을 가져옴
+youtube_title = get_youtube_title(url)
+# 제목으로 파일명 작성
+filename=extract_filename_from_title(youtube_title)
+
+# 기본 다운로드 경로 설정
 output_path = f"/tmp/{filename}.mp4"
-download_youtube_video(url, format_id, output_path)
+# 다운로드 경로를 두 번째 파라미터로 받으면 경로 수정
+# - 최신 버전으로 다운받는 방식으로 바꿔서 일단 주석 처리(추후에 필요하면 풀어서 다시 사용)
+#if len(sys.argv) > 2:
+#    output_path = sys.argv[2]
+
+# 지정된 경로로 다운로드 실행
+download_youtube_video(url, output_path)
