@@ -79,7 +79,7 @@ def download_youtube_video(url, output_path):
 # 특파원 보고 세계는 지금 본방송 재생목록
 playlist_url = 'https://www.youtube.com/watch?v=9jeaIELBlP0&list=PLlHdT83qa_1zKzg0so3sU7FtO-rxao_2H'
 # n번째 영상 url 가져오기(최근방송 받으려면 default 1 사용)
-url = get_video_url(playlist_url, 2)
+url = get_video_url(playlist_url, 1)
 # url을 가지고 YouTube 동영상의 제목을 가져옴
 youtube_title = get_youtube_title(url)
 # 제목으로 파일명 작성
