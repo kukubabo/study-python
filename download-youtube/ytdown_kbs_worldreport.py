@@ -98,6 +98,8 @@ def upload_to_nas(output_path):
     finally:
         # close ssh
         ssh_client.close()
+    
+    os.remove(output_path)
 
 # 파라미터 체크해서 URL 정보가 없으면 URL 입력하라고 알려주기
 # - 최신 버전으로 다운받는 방식으로 바꿔서 일단 주석 처리(추후에 필요하면 풀어서 다시 사용)
