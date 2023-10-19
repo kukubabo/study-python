@@ -8,9 +8,12 @@
 ##  1.0       2023-06-04       kukubabo    First Revision.
 ############################################################################################
 #import sys
+import os
 import subprocess
 import re
 import yt_dlp
+import paramiko
+from scp import SCPClient
 
 # 재생목록에서 n번째 영상 url 가져오기
 def get_video_url(playlist_url, n):
@@ -68,6 +71,34 @@ def download_youtube_video(url, output_path):
     command = ['yt-dlp', '-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4', '--merge-output-format', 'mp4', '-o', output_path, url]
     subprocess.call(command)
 
+def upload_to_nas(output_path):
+    print(output_path)
+
+    hostname = os.getenv('NAS_HOST')
+    port = os.getenv('NAS_PORT')
+    username = os.getenv('NAS_USER')
+    password = os.getenv('NAS_PASS')
+
+    ssh_client = paramiko.SSHClient()
+    ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    try:
+        # connect ssh
+        ssh_client.connect(hostname=hostname, port=port, username=username, password=password)
+        
+        with SCPClient(ssh_client.get_transport()) as scp:
+            local_file = output_path
+            remote_file = '/volume2/video/tv/특파원 보고 세계는 지금 [KBS1]/'
+
+            scp.put(local_file, remote_file)
+
+    except Exception as e:
+        print(e)
+    
+    finally:
+        # close ssh
+        ssh_client.close()
+
 # 파라미터 체크해서 URL 정보가 없으면 URL 입력하라고 알려주기
 # - 최신 버전으로 다운받는 방식으로 바꿔서 일단 주석 처리(추후에 필요하면 풀어서 다시 사용)
 #if len(sys.argv) < 2:
@@ -94,3 +125,8 @@ output_path = f"/tmp/{filename}.mp4"
 
 # 지정된 경로로 다운로드 실행
 download_youtube_video(url, output_path)
+
+# NAS로 업로드(scp)
+# 실제 경로로 넣고 싶은데 시놀로지에서 "특파원 보고 세계는 지금 [KBS1]" 경로를 읽지 못하는듯
+# scp -P 10022 "/tmp/특파원 보고 세계는 지금.E328.20231014.720p-YT.mp4" kukubabo@192.168.0.28:/volume2/video/etc/
+upload_to_nas(output_path)
