@@ -55,17 +55,23 @@ def get_max_resolution(url):
         return max_resolution
 
 def extract_filename_from_title(title):
-    pattern = r"\(KBS_(.*?)회_(\d{4})\.(\d{2})\.(\d{2})\.[^)]+\)"
+    pattern = r"\(KBS_(.*?)회_(\d{4})\.(\d{1,2})\.(\d{1,2})\.[^)]+\)" #  (KBS_328회_2023.10.14.방송 / KBS_339회_2024.1.6.방송)
     match = re.search(pattern, title)
     if match:
         episode = match.group(1)
         year = match.group(2)
         month = match.group(3)
+        # 일자가 한 자리일 경우 앞에 0 붙이기
+        if len(month) == 1:
+            month = '0' + month
         day = match.group(4)
+        # 일자가 한 자리일 경우 앞에 0 붙이기
+        if len(day) == 1:
+            day = '0' + day
         resolution = get_max_resolution(url)
         return f"특파원 보고 세계는 지금.E{episode}.{year}{month}{day}.{resolution}p-YT"
     else:
-        return f"특파원 보고 세계는 지금.{resolution}p-YT"
+        return f"특파원 보고 세계는 지금-YT"
 
 def download_youtube_video(url, output_path):
     command = ['yt-dlp', '-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4', '--merge-output-format', 'mp4', '-o', output_path, url]
@@ -74,6 +80,9 @@ def download_youtube_video(url, output_path):
 def upload_to_nas(output_path):
     print(output_path)
 
+    # ====================================
+    # NAS 접속 정보를 설정해줘야 함
+    # ====================================
     hostname = os.getenv('NAS_HOST')
     port = os.getenv('NAS_PORT')
     username = os.getenv('NAS_USER')
@@ -110,7 +119,7 @@ def upload_to_nas(output_path):
 #url = sys.argv[1]
 
 # 특파원 보고 세계는 지금 본방송 재생목록
-playlist_url = 'https://www.youtube.com/watch?v=9jeaIELBlP0&list=PLlHdT83qa_1zKzg0so3sU7FtO-rxao_2H'
+playlist_url = 'https://www.youtube.com/playlist?list=PLlHdT83qa_1zKzg0so3sU7FtO-rxao_2H'
 # n번째 영상 url 가져오기(최근방송 받으려면 default 1 사용)
 url = get_video_url(playlist_url, 1)
 # url을 가지고 YouTube 동영상의 제목을 가져옴
@@ -129,6 +138,4 @@ output_path = f"/tmp/{filename}.mp4"
 download_youtube_video(url, output_path)
 
 # NAS로 업로드(scp)
-# 실제 경로로 넣고 싶은데 시놀로지에서 "특파원 보고 세계는 지금 [KBS1]" 경로를 읽지 못하는듯
-# scp -P 10022 "/tmp/특파원 보고 세계는 지금.E328.20231014.720p-YT.mp4" kukubabo@192.168.0.28:/volume2/video/etc/
 upload_to_nas(output_path)
